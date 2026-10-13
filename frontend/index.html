@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChainEscrow - Decentralized Escrow</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .container { grid-template-columns: 1fr; }
+        }
+        header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        h1 { margin: 0; font-size: 22px; color: #0f172a; }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover { background: #1d4ed8; }
+        .card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .form-group { margin-bottom: 14px; }
+        label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        .milestone-row { display: flex; gap: 10px; margin-bottom: 8px; }
+        .job-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 14px;
+            background: #fff;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-pending { background: #fef9c3; color: #854d0e; }
+        .badge-submitted { background: #e0f2fe; color: #0369a1; }
+        .badge-approved { background: #dcfce7; color: #166534; }
+        .badge-disputed { background: #fee2e2; color: #991b1b; }
+        .badge-resolved { background: #f3e8ff; color: #6b21a8; }
+        .badge-refunded { background: #f1f5f9; color: #475569; }
+        
+        #role-banner {
+            grid-column: 1 / -1;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1e40af;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>🔒 ChainEscrow</h1>
+            <div>
+                <span id="wallet-address" style="margin-right: 12px; font-size: 14px; font-weight: 500; color: #64748b;">Not Connected</span>
+                <button id="connect-btn" onclick="connectWallet()">Connect MetaMask</button>
+            </div>
+        </header>
+
+        <!-- Role Adaptive Summary Banner -->
+        <div id="role-banner">
+            <span id="role-summary-text">Connected as: Loading roles...</span>
+        </div>
+
+        <!-- Left Column: Main Actions -->
+        <div>
+            <!-- Dedicated Arbiter Dispute-Resolution Panel -->
+            <div class="card" id="arbiter-panel-card" style="display: none; border-left: 4px solid #f4a261; background: #fffdf9;">
+                <h2 style="color: #d97706; margin-top: 0; font-size: 18px;">⚖️ Arbiter Dispute-Resolution Panel</h2>
+                <p style="font-size: 13px; color: #666;">You are designated as an arbiter on active jobs. Below are milestones currently awaiting your dispute vote:</p>
+                <div id="arbiter-disputes-container" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;"></div>
+            </div>
+
+            <!-- Create Job Flow -->
+            <div class="card">
+                <h2>Create New Escrow Job</h2>
+                <div class="form-group">
+                    <label>Freelancer Address</label>
+                    <input type="text" id="freelancer-address" placeholder="0x...">
+                </div>
+                <div class="form-group">
+                    <label>Arbiters (Comma-separated addresses)</label>
+                    <input type="text" id="arbiters-addresses" placeholder="0xArbiter1, 0xArbiter2">
+                </div>
+                <div class="form-group">
+                    <label>Token Address (Leave empty for Native ETH)</label>
+                    <input type="text" id="token-address" placeholder="0x0000000000000000000000000000000000000000">
+                </div>
+                <div class="form-group">
+                    <label>Milestones (Amount in ETH & Future Deadline)</label>
+                    <div id="milestones-list">
+                        <div class="milestone-row">
+                            <input type="text" placeholder="Amount (e.g. 0.1)" class="m-amount">
+                            <input type="datetime-local" class="m-deadline" title="Deadline Date & Time">
+                        </div>
+                    </div>
+                    <button onclick="addMilestoneRow()" style="background: #64748b; margin-top: 6px; padding: 6px 12px; font-size: 13px;">+ Add Milestone</button>
+                </div>
+                <button onclick="createJob()" style="width: 100%; margin-top: 10px;">Create and Fund Job</button>
+            </div>
+
+            <!-- Active Jobs Detail View -->
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                    <h2 style="margin: 0;">Active Escrow Jobs</h2>
+                    <button onclick="loadJobs()" id="load-jobs-btn" style="background: #475569; padding: 6px 12px; font-size: 13px;">Refetch Chain State</button>
+                </div>
+                <div id="jobs-container">
+                    <p style="color: #64748b; font-size: 14px;">Connect wallet to view live on-chain escrow states.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Event History Log -->
+        <div>
+            <div class="card" style="height: fit-content; max-height: 800px; overflow-y: auto;">
+                <h2 style="margin-top: 0; font-size: 18px;">📜 On-Chain Activity Log</h2>
+                <p style="font-size: 12px; color: #64748b; margin-top: -10px;">Pulled directly from contract events.</p>
+                <div id="activity-log-container" style="display: flex; flex-direction: column; gap: 10px;">
+                    <p style="color: #94a3b8; font-size: 13px;">Activity will appear here after connection.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ethers.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+    <script src="blockchain.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
