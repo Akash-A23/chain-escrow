@@ -31,8 +31,3 @@ A decentralized, trustless milestone-based escrow application built on Ethereum,
 ### Prerequisites
 * [Node.js](https://nodejs.org/) installed on your machine.
 * [MetaMask](https://metamask.io/) browser extension installed.
-
-### 1. Clone the Repository
-```bash
-git clone [https://github.com/Akash-A23/chain-escrow.git](https://github.com/Akash-A23/chain-escrow.git)
-cd chain-escrow
